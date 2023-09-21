@@ -6,7 +6,7 @@ begin_sec = re.compile(r'^; <start (\S+) (.*)>$', re.I | re.M)
 end_sec = re.compile(r'^; </(?:\S*) (\S+) (.*?)>$', re.I | re.M)
 comment = re.compile(r';.*$', re.M)
 query_begin = re.compile(r'; Starting query.*$', re.M)
-query_fml = re.compile(r'^; Encoding query formula :(.*\n)(?:; (.*\n))*', re.M)
+query_fml = re.compile(r'^; Encoding query formula : (.*\n(; .*\n)*)', re.M)
 query_actual_begin = re.compile(r'^;;;*query$', re.M)
 query_end = re.compile(r'^\(set-option', re.M)
 unsat_core = re.compile(r'^; UNSAT CORE GENERATED: (.*)$', re.M)
@@ -55,7 +55,7 @@ def parse_smt2(src: str):
 
     fml = skip_until_after2(query_fml)
     if not fml: raise Exception('cannot find query fml')
-    fml = fml[1] + fml[2]
+    fml = fml[1].replace('\n; ', '\n').strip()
 
     if not skip_until_after2(query_actual_begin): raise Exception('cannot find query actual_begin')
     query_pre, buf = buf, ''
