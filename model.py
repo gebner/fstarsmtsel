@@ -118,8 +118,8 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
             with open(f'{ckpt_dir}/{prefix}.results', 'wb') as f:
                 pickle.dump({
                     'decls': [ d[0] for d in decls ],
-                    'decl_embs': decl_embs,
-                    'query_embs': query_embs,
+                    'decl_embs': decl_embs.to('cpu'),
+                    'query_embs': query_embs.to('cpu'),
                 }, f)
         print(log)
         wandb.log(log, step=step)
