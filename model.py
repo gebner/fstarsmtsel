@@ -40,10 +40,10 @@ class EmbModel(torch.nn.Module):
             for toks in input_ids
         ]).to(self.base_model.device)
         hidden = self.base_model.forward(batch).last_hidden_state
-        return torch.stack([
+        return F.normalize(torch.stack([
             hidden[i, len(input_ids[i]) - 1, :]
             for i in range(hidden.shape[0])
-        ])
+        ]))
 
 QUERY_EMBEDDING = '<query-embedding>'
 PREMISE_EMBEDDING = '<premise-embedding>'
@@ -82,7 +82,7 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
         decl2idx = { d[0]: i for i, d in enumerate(decls) }
         decl_embs = forward_batched([ tokenize_premise(d[1]['text']) for d in decls ], 64)
         query_embs = forward_batched([ tokenize_query(q['query_fml']) for q in ds['queries'] ], 64)
-        sims = (F.normalize(query_embs) @ F.normalize(decl_embs).T).to('cpu')
+        sims = (query_embs @ decl_embs.T).to('cpu')
         full_recall_dist = []
         full_recall_fract = []
         recall10 = []
@@ -147,7 +147,6 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
                 for n in random.choices(q['unused_premises'], k=len(pos_prems)) ]
             query_toks = tokenize_query(q['query_fml'])
             embs = forward_batched(pos_prems + neg_prems + [query_toks])
-            embs = torch.nn.functional.normalize(embs)
             loss = torch.mean(((embs[:-1] @ embs[:-1].T) - torch.eye(embs.shape[0]-1).to(embs.device))**2)
             loss += torch.mean((embs[:k] @ embs[-1] - 1)**2)
             loss += torch.mean((embs[k:2*k] @ embs[-1])**2)
