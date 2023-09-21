@@ -59,7 +59,7 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
     model = EmbModel(base_model, tokenizer.pad_token_id)
 
     def tokenize_core(txt, tok_id):
-        toks = tokenizer(txt, max_length=300, truncation=True).input_ids
+        toks = tokenizer(txt, max_length=500, truncation=True).input_ids
         toks.append(tok_id)
         return toks
     def tokenize_query(txt): return tokenize_core(txt, tokenizer.additional_special_tokens_ids[0])
