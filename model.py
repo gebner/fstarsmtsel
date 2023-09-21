@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-from typing_extensions import TypedDict
+from typing_extensions import TypedDict, Optional
 import torch
 import torch.nn.functional as F
 from transformers import AutoModel, AutoTokenizer
 import json
 import random
 import wandb, wandb.plot
+import pickle
 
 class Decl(TypedDict):
     name: str
@@ -47,7 +48,7 @@ class EmbModel(torch.nn.Module):
 QUERY_EMBEDDING = '<query-embedding>'
 PREMISE_EMBEDDING = '<premise-embedding>'
 
-def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset):
+def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Optional[str]):
     model_name = 'EleutherAI/pythia-160m'
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     if not tokenizer.pad_token_id: tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -70,17 +71,17 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset):
     lr = 4e-7
     optimizer = torch.optim.Adam(params=list(model.parameters()), lr=lr)
 
-    wandb.init()
+    wandb.init(config = {
+        'base_model_name': model_name,
+        'learning_rate': lr,
+    })
 
-    def validate(ds, prefix, step):
+    def validate(ds, prefix, step, ckpt_dir):
         print(f'Validating {prefix} dataset')
         decls = list(ds['decls'].items())
         decl2idx = { d[0]: i for i, d in enumerate(decls) }
         decl_embs = forward_batched([ tokenize_premise(d[1]['text']) for d in decls ], 64)
-        queries = list(ds['queries'])
-        random.shuffle(queries)
-        queries = queries[:1000]
-        query_embs = forward_batched([ tokenize_query(q['query_fml']) for q in queries ], 64)
+        query_embs = forward_batched([ tokenize_query(q['query_fml']) for q in ds['queries'] ], 64)
         sims = (F.normalize(query_embs) @ F.normalize(decl_embs).T).to('cpu')
         full_recall_dist = []
         full_recall_fract = []
@@ -113,6 +114,13 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset):
             f'{prefix}_mean_recall_at_10': torch.mean(torch.Tensor(recall10)).item(),
             f'{prefix}_mean_precision_at_10': torch.mean(torch.Tensor(precision10)).item(),
         }
+        if ckpt_dir:
+            with open(f'{ckpt_dir}/{prefix}.results', 'wb') as f:
+                pickle.dump({
+                    'decls': [ d[0] for d in decls ],
+                    'decl_embs': decl_embs,
+                    'query_embs': query_embs,
+                }, f)
         print(log)
         wandb.log(log, step=step)
 
@@ -122,11 +130,12 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset):
         qs = list(train_ds['queries'])
         random.shuffle(qs)
         for q in qs:
-            if (step % 100) == 0:
+            if (step % 500) == 0:
+                ckpt_dir = save_dir and f'{save_dir}/ckpt-{step}'
+                if ckpt_dir: base_model.save_pretrained(ckpt_dir)
                 with torch.no_grad():
-                    pass
-                    validate(valid_ds, 'valid', step)
-                    validate(train_ds, 'train', step)
+                    validate(valid_ds, 'valid', step, ckpt_dir)
+                    validate(train_ds, 'train', step, ckpt_dir)
             step += 1
             optimizer.zero_grad()
             pos_prems = list(q['used_premises'])
@@ -153,4 +162,4 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset):
 if __name__ == '__main__':
     train_ds = json.load(open('ulib.json'))
     valid_ds = json.load(open('merkle-tree.json'))
-    train(train_ds, valid_ds)
+    train(train_ds, valid_ds, 'outputs')
