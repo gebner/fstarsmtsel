@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-from typing_extensions import TypedDict, Literal, Union, Any
-from dataclasses import dataclass
+from typing_extensions import TypedDict
 import torch
-from torch import nn
 import torch.nn.functional as F
-from transformers import AutoModel, AutoModelForCausalLM, AutoTokenizer, Trainer, DefaultDataCollator, TrainingArguments
+from transformers import AutoModel, AutoTokenizer
 import json
 import random
-import wandb
+import wandb, wandb.plot
 
 class Decl(TypedDict):
     name: str
@@ -45,17 +43,6 @@ class EmbModel(torch.nn.Module):
             hidden[i, len(input_ids[i]) - 1, :]
             for i in range(hidden.shape[0])
         ])
-        # hidden = self.base_model.forward(input_ids).last_hidden_state
-        # def last_nonzero_id(tokens):
-        #     toks: list[int] = tokens.tolist()
-        #     if self.pad_token in toks:
-        #         return toks.index(self.pad_token) - 1
-        #     else:
-        #         return -1
-        # return torch.stack([
-        #     hidden[i, last_nonzero_id(input_ids[i]), :]
-        #     for i in range(hidden.shape[0])
-        # ])
 
 QUERY_EMBEDDING = '<query-embedding>'
 PREMISE_EMBEDDING = '<premise-embedding>'
@@ -89,14 +76,11 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset):
         print(f'Validating {prefix} dataset')
         decls = list(ds['decls'].items())
         decl2idx = { d[0]: i for i, d in enumerate(decls) }
-        # print('declaration embeddings')
         decl_embs = forward_batched([ tokenize_premise(d[1]['text']) for d in decls ], 64)
-        # print('query embeddings')
         queries = list(ds['queries'])
         random.shuffle(queries)
         queries = queries[:1000]
         query_embs = forward_batched([ tokenize_query(q['query_fml']) for q in queries ], 64)
-        # print('validation')
         sims = (F.normalize(query_embs) @ F.normalize(decl_embs).T).to('cpu')
         full_recall_dist = []
         full_recall_fract = []
@@ -104,9 +88,6 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset):
         precision10 = []
         for query, sim_dist in zip(ds['queries'], sims):
             sim = torch.argsort(sim_dist, descending=True).tolist()
-            # print(query['filename'])
-            # print(query['used_premises'])
-            # print([ decls[i][0] for i in sim[:10] ])
             used = set(decl2idx[n] for n in query['used_premises'])
             if len(used) == 0: continue
             unused = set(decl2idx[n] for n in query['unused_premises'])
@@ -162,13 +143,6 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset):
             loss += torch.mean((embs[:k] @ embs[-1] - 1)**2)
             loss += torch.mean((embs[k:2*k] @ embs[-1])**2)
             loss /= 3
-            # loss = torch.mean(torch.cat([
-            #     torch.stack([
-            #         F.cosine_embedding_loss(embs[-1].reshape((1,-1)), embs[i].reshape((1,-1)), torch.Tensor([1]).to(embs.device)),
-            #         F.cosine_embedding_loss(embs[-1].reshape((1,-1)), embs[k+i].reshape((1,-1)), torch.Tensor([-1]).to(embs.device)),
-            #     ])
-            #     for i in range(k)
-            # ]))
             loss.backward()
             optimizer.step()
             wandb.log({
