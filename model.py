@@ -159,6 +159,7 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
             print(f'step {step:5}: loss={loss:.3f} name={q["filename"]}')
 
 if __name__ == '__main__':
-    train_ds = json.load(open('ulib.json'))
-    valid_ds = json.load(open('merkle-tree.json'))
+    import sys
+    train_ds = json.load(open(sys.argv[1]))
+    valid_ds = json.load(open(sys.argv[2]))
     train(train_ds, valid_ds, 'outputs')
