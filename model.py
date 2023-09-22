@@ -97,11 +97,11 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
             full_recall_fract.append(max((k for k, i in enumerate(sim) if i in used), default=0) / len(prems))
             precision10.append(len([i for i in sim[:10] if i in used]) / 10)
             recall10.append(len([i for i in sim[:10] if i in used]) / len(used))
-            full_recall_dist.append(max((sim_dist[i] for i in used), default=0))
+            full_recall_dist.append(max((sim_dist[i].arccos().item() for i in used), default=0))
         full_recall_fract = torch.Tensor(full_recall_fract)
         full_recall_fract_percentiles = [ [p, torch.quantile(full_recall_fract, p/100).item()] for p in range(101) ]
         full_recall_fract_percentiles = wandb.Table(data=full_recall_fract_percentiles, columns = ["x", "y"])
-        full_recall_dist = torch.Tensor(full_recall_dist).arccos()
+        full_recall_dist = torch.Tensor(full_recall_dist)
         log = {
             f'{prefix}_mean_full_recall_fract': torch.mean(full_recall_fract).item(),
             f'{prefix}_mean_full_recall_dist': torch.mean(full_recall_dist).item(),
