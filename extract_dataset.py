@@ -132,5 +132,3 @@ if __name__ == '__main__':
     import sys
     import json
     json.dump(parse_smt2_files(sys.argv[1:]), sys.stdout)
-    # fn = sys.argv[1]
-    # json.dump(parse_smt2(open(fn).read()), sys.stdout)
