@@ -1,2 +1,5 @@
 .venv
 /wandb
+__pycache__
+/.vscode
+/outputs
