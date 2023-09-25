@@ -140,7 +140,7 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
                 if ckpt_dir: base_model.save_pretrained(ckpt_dir)
                 with torch.no_grad():
                     validate(valid_ds, 'valid', step, ckpt_dir)
-                    validate(train_ds, 'train', step, ckpt_dir)
+                    # validate(train_ds, 'train', step, ckpt_dir)
             step += 1
             optimizer.zero_grad()
             pos_prems = list(q['used_premises'])
