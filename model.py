@@ -58,9 +58,14 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
     base_model = AutoModel.from_pretrained(model_name).to('cuda')
     model = EmbModel(base_model, tokenizer.pad_token_id)
 
+    dots_toks = tokenizer('...').input_ids
+    max_len = 2040
+
     def tokenize_core(txt, tok_id):
-        toks = tokenizer(txt, max_length=500, truncation=True).input_ids
+        toks = tokenizer(txt).input_ids
         toks.append(tok_id)
+        if len(toks) > max_len:
+            toks = toks[:max_len/2] + dots_toks + toks[-max_len/2 + len(dots_toks):]
         return toks
     def tokenize_query(txt): return tokenize_core(txt, tokenizer.additional_special_tokens_ids[0])
     def tokenize_premise(txt): return tokenize_core(txt, tokenizer.additional_special_tokens_ids[1])
