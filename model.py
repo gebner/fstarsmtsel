@@ -147,10 +147,10 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
                 for n in random.choices(q['unused_premises'], k=len(pos_prems)) ]
             query_toks = tokenize_query(q['query_fml'])
             embs = forward_batched(pos_prems + neg_prems + [query_toks])
-            loss = torch.mean(((embs[:-1] @ embs[:-1].T) - torch.eye(embs.shape[0]-1).to(embs.device))**2)
-            loss += torch.mean((embs[:k] @ embs[-1] - 1)**2)
+            # loss = torch.mean(((embs[:-1] @ embs[:-1].T) - torch.eye(embs.shape[0]-1).to(embs.device))**2)
+            loss = torch.mean((embs[:k] @ embs[-1] - 1)**2)
             loss += torch.mean((embs[k:2*k] @ embs[-1])**2)
-            loss /= 3
+            loss /= 2
             loss.backward()
             optimizer.step()
             wandb.log({
