@@ -7,6 +7,7 @@ import json
 import random
 import wandb, wandb.plot
 import pickle
+from tqdm import tqdm
 
 class Decl(TypedDict):
     name: str
@@ -70,8 +71,8 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
     def tokenize_query(txt): return tokenize_core(txt, tokenizer.additional_special_tokens_ids[0])
     def tokenize_premise(txt): return tokenize_core(txt, tokenizer.additional_special_tokens_ids[1])
 
-    def forward_batched(batch, minibatchsize=16):
-        return torch.cat([ model.forward(batch[i:i+minibatchsize]) for i in range(0, len(batch), minibatchsize) ])
+    def forward_batched(batch, minibatchsize=8):
+        return torch.cat([ model.forward(batch[i:i+minibatchsize]) for i in tqdm(range(0, len(batch), minibatchsize)) ])
 
     lr = 4e-7
     optimizer = torch.optim.Adam(params=list(model.parameters()), lr=lr)
