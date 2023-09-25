@@ -65,7 +65,7 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
         toks = tokenizer(txt).input_ids
         toks.append(tok_id)
         if len(toks) > max_len:
-            toks = toks[:max_len/2] + dots_toks + toks[-max_len/2 + len(dots_toks):]
+            toks = toks[:max_len//2] + dots_toks + toks[-max_len//2 + len(dots_toks):]
         return toks
     def tokenize_query(txt): return tokenize_core(txt, tokenizer.additional_special_tokens_ids[0])
     def tokenize_premise(txt): return tokenize_core(txt, tokenizer.additional_special_tokens_ids[1])
