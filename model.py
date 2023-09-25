@@ -71,8 +71,10 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
     def tokenize_query(txt): return tokenize_core(txt, tokenizer.additional_special_tokens_ids[0])
     def tokenize_premise(txt): return tokenize_core(txt, tokenizer.additional_special_tokens_ids[1])
 
-    def forward_batched(batch, minibatchsize=8):
-        return torch.cat([ model.forward(batch[i:i+minibatchsize]) for i in tqdm(range(0, len(batch), minibatchsize)) ])
+    def forward_batched(batch, minibatchsize=8, progressbar=True):
+        idxs = range(0, len(batch), minibatchsize)
+        if progressbar: idxs = tqdm(idxs)
+        return torch.cat([ model.forward(batch[i:i+minibatchsize]) for i in idxs ])
 
     lr = 4e-7
     optimizer = torch.optim.Adam(params=list(model.parameters()), lr=lr)
@@ -146,13 +148,13 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
             optimizer.zero_grad()
             pos_prems = list(q['used_premises'])
             random.shuffle(pos_prems)
-            pos_prems = [ tokenize_premise(train_ds['decls'][n]['text']) for n in pos_prems[:20] ]
+            pos_prems = [ tokenize_premise(train_ds['decls'][n]['text']) for n in pos_prems[:10] ]
             k = len(pos_prems)
             if k == 0: continue
             neg_prems = [ tokenize_premise(train_ds['decls'][n]['text'])
                 for n in random.choices(q['unused_premises'], k=len(pos_prems)) ]
             query_toks = tokenize_query(q['query_fml'])
-            embs = forward_batched(pos_prems + neg_prems + [query_toks])
+            embs = forward_batched(pos_prems + neg_prems + [query_toks], progressbar=False)
             # loss = torch.mean(((embs[:-1] @ embs[:-1].T) - torch.eye(embs.shape[0]-1).to(embs.device))**2)
             loss = torch.mean((embs[:k] @ embs[-1] - 1)**2)
             loss += torch.mean((embs[k:2*k] @ embs[-1])**2)
@@ -163,6 +165,8 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
                 'train_loss': loss.detach(),
             }, step=step)
             print(f'step {step:5}: loss={loss:.3f} name={q["filename"]}')
+            del embs
+            del loss
 
 if __name__ == '__main__':
     import sys
