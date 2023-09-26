@@ -76,7 +76,7 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
         if progressbar: idxs = tqdm(idxs)
         return torch.cat([ model.forward(batch[i:i+minibatchsize]) for i in idxs ])
 
-    lr = 4e-7
+    lr = 1e-6
     optimizer = torch.optim.Adam(params=list(model.parameters()), lr=lr)
 
     wandb.init(config = {
