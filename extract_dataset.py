@@ -59,6 +59,7 @@ def parse_smt2(src: str):
         
         if c[0] == 'start':
             enc_stack.append(c[1].group(2))
+            cur_chunk.append(c[1].group())
             continue
         
         if c[0] == 'end':
