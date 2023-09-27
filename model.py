@@ -134,6 +134,7 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
 
     nepochs = 4
     step = 0
+    optimizer.zero_grad()
     for _ in range(nepochs):
         qs = list(train_ds['queries'])
         random.shuffle(qs)
@@ -145,7 +146,6 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
                     validate(valid_ds, 'valid', step, ckpt_dir)
                     # validate(train_ds, 'train', step, ckpt_dir)
             step += 1
-            optimizer.zero_grad()
             pos_prems = list(q['used_premises'])
             random.shuffle(pos_prems)
             pos_prems = [ tokenize_premise(train_ds['decls'][n]['text']) for n in pos_prems[:10] ]
@@ -161,6 +161,7 @@ def train(train_ds: UnsatCoreDataset, valid_ds: UnsatCoreDataset, save_dir: Opti
             loss /= 2
             loss.backward()
             optimizer.step()
+            optimizer.zero_grad(set_to_none=True)
             wandb.log({
                 'train_loss': loss.detach(),
             }, step=step)
